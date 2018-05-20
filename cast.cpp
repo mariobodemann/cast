@@ -110,6 +110,8 @@ struct Settings {
 	Screen screen;
 	Camera camera = {10.0f, 10.0f};
 
+	bool minimap = false;
+
 	Settings(int argc, char** argv){
 		for(int i = 1; i < argc; ++i) {
 			bool hasArg = i + 1 < argc;
@@ -288,6 +290,10 @@ int main(int argc, char** argv) {
 			settings.player.dir = times(rot_minus, settings.player.dir);
 		}
 
+		if (i == 'm'){
+			settings.minimap = !settings.minimap;
+		}
+
 		cout << "\033[" << settings.screen.size.height << "A";
 		render(settings);
 	}
@@ -323,6 +329,7 @@ bool drawScreenFrame(int x, int y, int w, int h) {
 
 	return false;
 }
+
 bool drawMiniMap(int x, int y, World world, Player player) {
 	V arrow_position = {player.pos.x + player.dir.x, player.pos.y + player.dir.y};
 
@@ -407,7 +414,7 @@ void render(const Settings& settings) {
 	for (int y = 0; y < settings.screen.size.height; ++y) {
 		for ( int x = 0; x < settings.screen.size.width; ++x) {
 			if ( !drawScreenFrame( x, y, settings.screen.size.width, settings.screen.size.height)
-				 && !drawMiniMap( x - 1, y - 1, settings.world, settings.player)
+				&& (!settings.minimap || !drawMiniMap( x - 1, y - 1, settings.world, settings.player))
 			) {
 				rayCast( x, y, settings.screen, settings.camera, settings.world, settings.player);
 			}
