@@ -17,6 +17,12 @@ static void error(string, string);
 
 #define PI 3.14159265f
 
+#define FILL_CHARACTERS 0
+#define FILL_COLOURED_CHARACTERS 1
+#define FILL_BACKGROUND_AND_CHARACTERS 2
+#define FILL_BACKGROUND 3
+#define FILL_LENGTH FILL_BACKGROUND +1
+
 union V {
 	struct {
 		float x;
@@ -111,6 +117,7 @@ struct Settings {
 	Camera camera = {10.0f, 10.0f};
 
 	bool minimap = false;
+	int mode = 0;
 
 	Settings(int argc, char** argv){
 		for(int i = 1; i < argc; ++i) {
@@ -294,6 +301,13 @@ int main(int argc, char** argv) {
 			settings.minimap = !settings.minimap;
 		}
 
+		if (i == 'v'){
+			settings.mode ++;
+			if (settings.mode == FILL_LENGTH) {
+				settings.mode = 0;
+			}
+		}
+
 		cout << "\033[" << settings.screen.size.height << "A";
 		render(settings);
 	}
@@ -330,7 +344,32 @@ bool drawScreenFrame(int x, int y, int w, int h) {
 	return false;
 }
 
-bool drawMiniMap(int x, int y, World world, Player player) {
+void drawCell(char cell, int mode){
+	if (cell == ' '){
+		cout << cell;
+	} else {
+		switch(mode){
+			default:
+			case FILL_CHARACTERS:
+				cout << cell;
+				break;
+			case FILL_COLOURED_CHARACTERS:
+				cout << "\033[" << 31 + cell % 7 << "m" << cell << "\033[m";
+				break;
+			case FILL_BACKGROUND_AND_CHARACTERS:
+				cout << "\033[" << 41 + cell % 7 << "m" << cell << "\033[m";
+				break;
+			case FILL_BACKGROUND:
+				cout << "\033[" << 41 + cell % 7 << "m \033[m";
+				break;
+		}
+	}
+}
+
+bool drawMiniMap(int x, int y, const Settings& settings) {
+	World world = settings.world;
+	Player player = settings.player;
+
 	V arrow_position = {player.pos.x + player.dir.x, player.pos.y + player.dir.y};
 
 	string arrow; 
@@ -368,14 +407,19 @@ bool drawMiniMap(int x, int y, World world, Player player) {
 		} else if (ax == x && ay == y) {
 			cout << "\033[31m" << arrow << "\033[m";	
 		} else {
-			cout << world.cells[y*((int)world.size.width) + x];
+			drawCell(world.cells[y*((int)world.size.width) + x], settings.mode);
 		}
 		return true;
 	}
 	return false;
 }
 
-void rayCast(int x, int y, Screen screen, Camera camera, World world, Player player) {
+void rayCast(int x, int y, const Settings& settings) {
+	Screen screen = settings.screen;
+	Camera camera = settings.camera;
+	World world = settings.world;
+	Player player = settings.player;
+
 	V playerToPlane = times(player.dir, camera.distance);
 	V planeDir = times(rot(dtor(90.0f)), player.dir);
 	V planeStart = vplus(player.pos, vplus(playerToPlane, times(planeDir, camera.width / 2.0f)));
@@ -393,7 +437,7 @@ void rayCast(int x, int y, Screen screen, Camera camera, World world, Player pla
 				float h = 1.0f / factor;
 
 				if (abs(screen.size.height / 2.0f - y) < h) {
-					cout << cell;
+					drawCell(cell, settings.mode);
 				} else {
 					cout << " ";
 				}
@@ -414,9 +458,9 @@ void render(const Settings& settings) {
 	for (int y = 0; y < settings.screen.size.height; ++y) {
 		for ( int x = 0; x < settings.screen.size.width; ++x) {
 			if ( !drawScreenFrame( x, y, settings.screen.size.width, settings.screen.size.height)
-				&& (!settings.minimap || !drawMiniMap( x - 1, y - 1, settings.world, settings.player))
+				&& (!settings.minimap || !drawMiniMap( x - 1, y - 1, settings))
 			) {
-				rayCast( x, y, settings.screen, settings.camera, settings.world, settings.player);
+				rayCast( x, y, settings);
 			}
 		}
 		cout << endl;
