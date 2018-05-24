@@ -286,9 +286,9 @@ int main(int argc, char** argv) {
 		} else if ( i == 's') {
 			settings.player.pos = vminus(settings.player.pos, settings.player.dir);
 		} else if ( i == 'a') {
-			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(90)), settings.player.dir));
-		} else if ( i == 'd') {
 			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(-90)), settings.player.dir));
+		} else if ( i == 'd') {
+			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(90)), settings.player.dir));
 		}
 		
 		if ( i == 'e') {
@@ -423,7 +423,7 @@ void rayCast(int x, int y, const Settings& settings) {
 	V playerToPlane = times(player.dir, camera.distance);
 	V planeDir = times(rot(dtor(90.0f)), player.dir);
 	V planeStart = vplus(player.pos, vplus(playerToPlane, times(planeDir, camera.width / 2.0f)));
-	V rayOnPlane = vplus(planeStart, times(times(rot(dtor(180.0f)), planeDir), camera.width * (float)x / screen.size.width));
+	V rayOnPlane = vplus(planeStart, times(times(rot(dtor(180.0f)), planeDir), camera.width * (1.0f-(float)x / screen.size.width)));
 	V rayDir = vminus(rayOnPlane, player.pos);
 
 	bool hit = false;
@@ -450,7 +450,7 @@ void rayCast(int x, int y, const Settings& settings) {
 	}
 
 	if (!hit) {
-		cout << ".";
+		cout << " ";
 	}
 }
 
