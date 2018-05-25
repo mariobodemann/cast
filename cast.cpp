@@ -427,7 +427,7 @@ void rayCast(int x, int y, const Settings& settings) {
 	V rayDir = vminus(rayOnPlane, player.pos);
 
 	bool hit = false;
-	for (float factor = 0.1f; factor < 100.f && !hit; factor += 0.1f) {
+	for (float factor = 0.1f; factor < 100.f && !hit; factor += 0.01f) {
 		V check = vplus(player.pos, times(rayDir, factor));
 		if ( int(check.x) >= 0 && int(check.x) < world.size.width 
 		  && int(check.y) >= 0 && int(check.y) < world.size.height) {
