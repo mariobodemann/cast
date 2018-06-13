@@ -38,11 +38,6 @@ union V {
 		float width;
 		float height;
 	};
-
-	struct {
-		float i;
-		float j;
-	};
 };
 
 union M {
@@ -108,6 +103,13 @@ struct Screen {
 struct Camera {
 	float distance;
 	float width;
+};
+
+struct Hit {
+	V coordinate;
+	V direction;
+	char cell;
+	float distance;
 };
 
 struct Settings {
@@ -421,7 +423,7 @@ bool drawMiniMap(int x, int y, const Settings& settings) {
 	return false;
 }
 
-void rayCast(int x, int y, const Settings& settings) {
+void castAllColumns(Hit *hits, const Settings& settings) {
 	Screen screen = settings.screen;
 	Camera camera = settings.camera;
 	World world = settings.world;
@@ -430,52 +432,77 @@ void rayCast(int x, int y, const Settings& settings) {
 	V playerToPlane = times(player.dir, camera.distance);
 	V planeDir = times(rot(dtor(90.0f)), player.dir);
 	V planeStart = vplus(player.pos, vplus(playerToPlane, times(planeDir, camera.width / 2.0f)));
-	V rayOnPlane = vplus(planeStart, times(times(rot(dtor(180.0f)), planeDir), camera.width * (1.0f-(float)x / screen.size.width)));
-	V rayDir = vminus(rayOnPlane, player.pos);
+	
+	for (int x = 0; x < screen.size.width; ++x) {
+		V rayOnPlane = vplus(planeStart, times(times(rot(dtor(180.0f)), planeDir), camera.width * (1.0f-(float)x / screen.size.width)));
+		V rayDir = vminus(rayOnPlane, player.pos);
 
-	bool hit = false;
-	for (float factor = 0.1f; factor < 100.f && !hit; factor += 0.01f) {
-		V check = vplus(player.pos, times(rayDir, factor));
-		if ( int(check.x) >= 0 && int(check.x) < world.size.width 
-		  && int(check.y) >= 0 && int(check.y) < world.size.height) {
-			char cell = world.cells[int(check.y) * int(world.size.w) + int(check.x)];
+		bool hit = false;
+		for (float distance = 0.01f; distance < 100.f && !hit; distance += 0.001f) {
+			V check = vplus(player.pos, times(rayDir, distance));
+			if ( int(check.x) >= 0 && int(check.x) < world.size.width 
+			  && int(check.y) >= 0 && int(check.y) < world.size.height) {
+				char cell = world.cells[int(check.y) * int(world.size.w) + int(check.x)];
 
-			if (cell != ' ') {
-				float h = 1.0f / factor;
-				float wallh = screen.size.height / 2.0f - y;
-				if (abs(wallh) < h) {
-					drawCell(cell, settings.mode);
-				} else {
-					if ( wallh >= h ) {
-						drawCell(' ', settings.mode);
-					} else {
-						drawCell('+', settings.mode);
-					}
+				if (cell != ' ') {
+					Hit *h = hits + x;
+					h->distance = distance;
+					h->cell = cell;
+					h->coordinate = check;
+					h->direction = rayDir;
+					
+					hit = true;
 				}
-
-				hit = true;
+			} else {
+				break;
 			}
-		} else {
-			factor += 100.0f;
 		}
-	}
 
-	if (!hit) {
-		cout << " ";
+		if (!hit) {
+			hits[x].distance = -1.0f;
+		}
 	}
 }
 
+void rayCast(int x, int y, Hit *hits, const Settings& settings) {
+	Screen screen = settings.screen;
+	
+	Hit hit = hits[x];
+
+	float distance = hit.distance;
+	float wallheight = 1.0f / distance;
+	float horizon = screen.size.height / 2.0f - y;
+		
+	if (abs(horizon) < wallheight) {
+		drawCell(hit.cell, settings.mode);
+	} else {
+		if ( horizon >= wallheight ) {
+			// celling
+			drawCell(' ', settings.mode);
+		} else {
+			// floor
+			drawCell('+', settings.mode);
+		}
+	}
+
+}
+
 void render(const Settings& settings) {
+	Hit *hits = new Hit[int(settings.screen.size.width)];
+	castAllColumns(hits, settings);
+
 	for (int y = 0; y < settings.screen.size.height; ++y) {
 		for ( int x = 0; x < settings.screen.size.width; ++x) {
 			if ( !drawScreenFrame( x, y, settings.screen.size.width, settings.screen.size.height)
 				&& (!settings.minimap || !drawMiniMap( x - 1, y - 1, settings))
 			) {
-				rayCast( x, y, settings);
+				rayCast(x, y, hits, settings);
 			}
 		}
 		cout << endl;
 	}
+
+	delete[] hits;
 }
 
 string maze(int length) {
