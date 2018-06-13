@@ -144,6 +144,13 @@ struct Settings {
 				cout << "camera width set to '" << camera.width << "'" << endl;
 			} else if( arg.compare("l") == 0 && hasArg) {
 				loadWorld(string(argv[++i]));
+			} else if( arg.compare("m") == 0 && hasArg) {
+				int newMode = atoi(argv[++i]);
+				if (newMode >= 0 && newMode < FILL_LENGTH) {
+					mode = newMode;
+				} else {
+					info("ignoring mode");
+				}
 			} else {
 				error("Could not parse argument ", arg);
 			}
@@ -282,13 +289,13 @@ int main(int argc, char** argv) {
 		
 		i = cin.get();
 		if ( i == 'w' ) {
-			settings.player.pos = vplus(settings.player.pos, settings.player.dir);
+			settings.player.pos = vplus(settings.player.pos, times(settings.player.dir, 0.5f));
 		} else if ( i == 's') {
-			settings.player.pos = vminus(settings.player.pos, settings.player.dir);
+			settings.player.pos = vminus(settings.player.pos, times(settings.player.dir, 0.5f));
 		} else if ( i == 'a') {
-			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(-90)), settings.player.dir));
+			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(-90)), times(settings.player.dir, 0.5f)));
 		} else if ( i == 'd') {
-			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(90)), settings.player.dir));
+			settings.player.pos = vplus(settings.player.pos, times(rot(dtor(90)), times(settings.player.dir, 0.5f)));
 		}
 		
 		if ( i == 'e') {
@@ -435,11 +442,15 @@ void rayCast(int x, int y, const Settings& settings) {
 
 			if (cell != ' ') {
 				float h = 1.0f / factor;
-
-				if (abs(screen.size.height / 2.0f - y) < h) {
+				float wallh = screen.size.height / 2.0f - y;
+				if (abs(wallh) < h) {
 					drawCell(cell, settings.mode);
 				} else {
-					cout << " ";
+					if ( wallh >= h ) {
+						drawCell(' ', settings.mode);
+					} else {
+						drawCell('+', settings.mode);
+					}
 				}
 
 				hit = true;
